@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/finance_data.dart';
+import '../data/summary.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common.dart';
 
@@ -8,17 +9,13 @@ class CategoriesScreen extends StatelessWidget {
   final bool standalone;
   const CategoriesScreen({super.key, this.standalone = false});
 
-  static const _spent = {
-    'Comida': 400000,
-    'Transporte': 350000,
-    'Compras': 275000,
-    'Hogar': 187500,
-    'Salud': 37500,
-    'Otros': 0,
-  };
-
   @override
   Widget build(BuildContext context) {
+    final s = FinanceSummary(AppState.transactions.value);
+    final spent = {
+      for (final (c, v) in s.expenseByCategory(s.monthStart, DateTime(9999)))
+        c.name: v,
+    };
     final body = ListView(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
       children: [
@@ -33,7 +30,7 @@ class CategoriesScreen extends StatelessWidget {
                 ),
               ),
             const Text(
-              'Categorías',
+              'Gastos del mes por categoría',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
@@ -66,7 +63,7 @@ class CategoriesScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      formatMoney(_spent[c.name] ?? 0),
+                      formatMoney(spent[c.name] ?? 0),
                       style: const TextStyle(
                         color: AppColors.muted,
                         fontWeight: FontWeight.w600,
@@ -93,15 +90,15 @@ class HelpScreen extends StatelessWidget {
     ),
     (
       '¿Cómo creo una meta de ahorro?',
-      'Ve a "Mis metas" y toca una meta para abonarle dinero.',
+      'Ve a "Mis metas", toca "Nueva meta" y luego abónale dinero cuando quieras.',
     ),
     (
       '¿Mis datos están seguros?',
-      'Tus datos se guardan de forma privada. Nunca compartimos tu información.',
+      'Tus datos se guardan en la nube de forma privada: solo tu cuenta puede verlos.',
     ),
     (
-      '¿Qué incluye Finix Pro?',
-      'Reportes avanzados, sin anuncios y soporte prioritario.',
+      '¿Cómo elimino un movimiento?',
+      'En Historial desliza el movimiento hacia la izquierda y confirma.',
     ),
   ];
 

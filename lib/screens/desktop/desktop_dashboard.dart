@@ -3,17 +3,20 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../data/finance_data.dart';
+import '../../data/summary.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/backgrounds.dart';
 import '../../widgets/charts.dart';
 import '../../widgets/common.dart';
 import '../add_movement_screen.dart';
+import '../goals_screen.dart';
+import '../home_screen.dart' show GreetingText;
 
 class DesktopDashboard extends StatelessWidget {
   final ValueChanged<int> onNavigate;
   const DesktopDashboard({super.key, required this.onNavigate});
 
-  void _openAdd(BuildContext context, bool income) =>
+  static void openAdd(BuildContext context, bool income) =>
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => AddMovementScreen(initialIncome: income),
@@ -23,110 +26,123 @@ class DesktopDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const gap = SizedBox(width: 20, height: 20);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(28, 8, 28, 28),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 220,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  flex: 7,
-                  child: _HeroBanner(onStats: () => onNavigate(1)),
-                ),
-                gap,
-                const Expanded(flex: 3, child: _BalancePanel()),
-              ],
-            ),
-          ),
-          gap,
-          Row(
+    return ValueListenableBuilder<List<Txn>>(
+      valueListenable: AppState.transactions,
+      builder: (context, txns, _) {
+        final s = FinanceSummary(txns);
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(28, 8, 28, 28),
+          child: Column(
             children: [
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.account_balance_wallet_rounded,
-                  color: AppColors.red,
-                  title: 'Agregar Gasto',
-                  subtitle: 'Registra un gasto',
-                  onTap: () => _openAdd(context, false),
+              SizedBox(
+                height: 220,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 7,
+                      child: _HeroBanner(onStats: () => onNavigate(1)),
+                    ),
+                    gap,
+                    Expanded(flex: 3, child: _BalancePanel(summary: s)),
+                  ],
                 ),
               ),
               gap,
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.south_rounded,
-                  color: AppColors.green,
-                  title: 'Agregar Ingreso',
-                  subtitle: 'Registra un ingreso',
-                  onTap: () => _openAdd(context, true),
+              Row(
+                children: [
+                  Expanded(
+                    child: _QuickAction(
+                      icon: Icons.account_balance_wallet_rounded,
+                      color: AppColors.red,
+                      title: 'Agregar Gasto',
+                      subtitle: 'Registra un gasto',
+                      onTap: () => openAdd(context, false),
+                    ),
+                  ),
+                  gap,
+                  Expanded(
+                    child: _QuickAction(
+                      icon: Icons.south_rounded,
+                      color: AppColors.green,
+                      title: 'Agregar Ingreso',
+                      subtitle: 'Registra un ingreso',
+                      onTap: () => openAdd(context, true),
+                    ),
+                  ),
+                  gap,
+                  Expanded(
+                    child: _QuickAction(
+                      icon: Icons.mic_rounded,
+                      color: AppColors.purple,
+                      title: 'Registrar con Voz',
+                      subtitle: 'Usa el micrófono con IA',
+                      onTap: () =>
+                          showSoon(context, 'El registro por voz con IA'),
+                    ),
+                  ),
+                  gap,
+                  Expanded(
+                    child: _QuickAction(
+                      icon: Icons.track_changes_rounded,
+                      color: AppColors.blue,
+                      title: 'Crear Meta',
+                      subtitle: 'Establece un objetivo',
+                      onTap: () => showCreateGoalDialog(context),
+                    ),
+                  ),
+                ],
+              ),
+              gap,
+              SizedBox(
+                height: 300,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(flex: 5, child: _SummaryChartCard(summary: s)),
+                    gap,
+                    Expanded(
+                      flex: 4,
+                      child: _CategoryDonutCard(
+                        summary: s,
+                        onDetail: () => onNavigate(4),
+                      ),
+                    ),
+                    gap,
+                    Expanded(
+                      flex: 3,
+                      child: _GoalsCard(onSeeAll: () => onNavigate(3)),
+                    ),
+                  ],
                 ),
               ),
               gap,
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.mic_rounded,
-                  color: AppColors.purple,
-                  title: 'Registrar con Voz',
-                  subtitle: 'Usa el micrófono con IA',
-                  onTap: () => showSoon(context, 'El registro por voz con IA'),
-                ),
-              ),
-              gap,
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.track_changes_rounded,
-                  color: AppColors.blue,
-                  title: 'Crear Meta',
-                  subtitle: 'Establece un objetivo',
-                  onTap: () => onNavigate(3),
+              SizedBox(
+                height: 240,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: _LatestMovements(
+                        txns: txns,
+                        onSeeAll: () => onNavigate(2),
+                      ),
+                    ),
+                    gap,
+                    Expanded(flex: 5, child: _MonthCard(summary: s)),
+                    gap,
+                    Expanded(
+                      flex: 3,
+                      child: _QuickSettings(onEdit: () => onNavigate(6)),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          gap,
-          SizedBox(
-            height: 300,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Expanded(flex: 5, child: _SummaryChartCard()),
-                gap,
-                Expanded(
-                  flex: 4,
-                  child: _CategoryDonutCard(onDetail: () => onNavigate(4)),
-                ),
-                gap,
-                Expanded(
-                  flex: 3,
-                  child: _GoalsCard(onSeeAll: () => onNavigate(3)),
-                ),
-              ],
-            ),
-          ),
-          gap,
-          SizedBox(
-            height: 240,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  flex: 4,
-                  child: _LatestMovements(onSeeAll: () => onNavigate(2)),
-                ),
-                gap,
-                const Expanded(flex: 5, child: _ProCard()),
-                gap,
-                Expanded(
-                  flex: 3,
-                  child: _QuickSettings(onEdit: () => onNavigate(6)),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -158,12 +174,11 @@ class _HeroBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
-                    'Hola, Noaj 👋',
-                    style: TextStyle(
-                      color: Colors.white,
+                  SizedBox(
+                    width: c.maxWidth > 620 ? c.maxWidth - 380 : null,
+                    child: const GreetingText(
                       fontSize: 34,
-                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -280,105 +295,91 @@ class _WalletIllustration extends StatelessWidget {
 /* ───────────────────────── Saldo ───────────────────────── */
 
 class _BalancePanel extends StatelessWidget {
-  const _BalancePanel();
+  final FinanceSummary summary;
+  const _BalancePanel({required this.summary});
 
   @override
-  Widget build(BuildContext context) => SoftCard(
-    padding: const EdgeInsets.all(22),
-    child: Stack(
-      children: [
-        Positioned(
-          right: 0,
-          top: 0,
-          child: Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: AppColors.greenSoft,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.account_balance_wallet_rounded,
-              color: AppColors.green,
-              size: 28,
-            ),
-          ),
-        ),
-        Positioned(
-          right: 0,
-          bottom: 0,
-          width: 150,
-          height: 70,
-          child: SmoothLineChart(
-            series: [
-              LineSeries(
-                const [1.0, 1.3, 1.1, 1.8, 1.6, 2.6, 3.1],
-                color: AppColors.green,
-                endDot: true,
+  Widget build(BuildContext context) {
+    final change = summary.balanceChange;
+    return SoftCard(
+      padding: const EdgeInsets.all(22),
+      child: Stack(
+        children: [
+          Positioned(
+            right: 0,
+            top: 0,
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: AppColors.greenSoft,
+                borderRadius: BorderRadius.circular(16),
               ),
-            ],
+              child: const Icon(
+                Icons.account_balance_wallet_rounded,
+                color: AppColors.green,
+                size: 28,
+              ),
+            ),
           ),
-        ),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Saldo Actual',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+          if (summary.txns.isNotEmpty)
+            Positioned(
+              right: 0,
+              bottom: 0,
+              width: 150,
+              height: 70,
+              child: SmoothLineChart(
+                series: [
+                  LineSeries(
+                    summary.balanceSeries(days: 180),
+                    color: AppColors.green,
+                    endDot: true,
+                  ),
+                ],
+              ),
+            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Text(
+                    'Saldo Actual',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Icon(
+                    Icons.visibility_outlined,
+                    size: 20,
+                    color: AppColors.text,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  formatMoney(summary.balance),
+                  style: const TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.text,
                   ),
                 ),
-                SizedBox(width: 8),
-                Icon(
-                  Icons.visibility_outlined,
-                  size: 20,
-                  color: AppColors.text,
-                ),
-              ],
-            ),
-            SizedBox(height: 18),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                '\$ 2.750.000',
-                style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.text,
-                ),
               ),
-            ),
-            SizedBox(height: 14),
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 10,
-                  backgroundColor: AppColors.greenSoft,
-                  child: Icon(
-                    Icons.arrow_upward_rounded,
-                    size: 13,
-                    color: AppColors.green,
-                  ),
-                ),
-                SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    '+12% vs. mes anterior',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: AppColors.text, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
+              const SizedBox(height: 14),
+              if (change != null)
+                ChangeLabel(change, suffix: ' vs. mes anterior'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /* ───────────────────────── Accesos rápidos ───────────────────────── */
@@ -445,197 +446,245 @@ class _QuickAction extends StatelessWidget {
 /* ───────────────────────── Resumen financiero ───────────────────────── */
 
 class _SummaryChartCard extends StatelessWidget {
-  const _SummaryChartCard();
+  final FinanceSummary summary;
+  const _SummaryChartCard({required this.summary});
+
+  /// Redondea el máximo del eje Y hacia arriba (1, 2, 2.5, 5 × 10^n).
+  static double _niceMax(double v) {
+    if (v <= 0) return 1000000;
+    final p = math.pow(10, (math.log(v) / math.ln10).floor()).toDouble();
+    for (final m in [1.0, 2.0, 2.5, 5.0, 10.0]) {
+      if (v <= m * p) return m * p;
+    }
+    return 10 * p;
+  }
 
   @override
-  Widget build(BuildContext context) => SoftCard(
-    padding: const EdgeInsets.fromLTRB(20, 18, 16, 14),
-    child: Column(
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.bar_chart_rounded, color: AppColors.green),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'Resumen Financiero',
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 17,
-                  color: AppColors.text,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.field,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Row(
-                children: [
-                  Text(
-                    'Últimos 6 meses',
-                    style: TextStyle(fontSize: 13, color: AppColors.text),
-                  ),
-                  SizedBox(width: 4),
-                  Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 18,
+  Widget build(BuildContext context) {
+    final buckets = summary.lastMonths(6);
+    final income = summary.incomeBy(buckets);
+    final expense = summary.expenseBy(buckets);
+    final maxY = _niceMax(
+      [...income, ...expense].fold<int>(0, math.max).toDouble(),
+    );
+    return SoftCard(
+      padding: const EdgeInsets.fromLTRB(20, 18, 16, 14),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.bar_chart_rounded, color: AppColors.green),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Resumen Financiero',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
                     color: AppColors.text,
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            LegendDot(color: AppColors.green, label: 'Ingresos'),
-            SizedBox(width: 18),
-            LegendDot(color: Color(0xFF8A958F), label: 'Gastos'),
-          ],
-        ),
-        const SizedBox(height: 4),
-        const Expanded(
-          child: SmoothLineChart(
-            minY: 0,
-            maxY: 4,
-            yLabels: ['4M', '3M', '2M', '1M', '0'],
-            xLabels: ['May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct'],
-            tooltip: '\$ 3.2M',
-            series: [
-              LineSeries(
-                [1.3, 2.2, 3.05, 2.6, 2.75, 3.2],
-                color: AppColors.green,
-                endDot: true,
-              ),
-              LineSeries(
-                [0.6, 1.7, 2.05, 1.6, 2.0, 1.65],
-                color: Color(0xFF8A958F),
-                fill: false,
-                width: 2.5,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.field,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Últimos 6 meses',
+                  style: TextStyle(fontSize: 13, color: AppColors.text),
+                ),
               ),
             ],
           ),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 10),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              LegendDot(color: AppColors.green, label: 'Ingresos'),
+              SizedBox(width: 18),
+              LegendDot(color: Color(0xFF8A958F), label: 'Gastos'),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: SmoothLineChart(
+              minY: 0,
+              maxY: maxY,
+              yLabels: [
+                for (var i = 4; i >= 0; i--) compactMoney(maxY * i / 4),
+              ],
+              xLabels: [for (final b in buckets) b.label],
+              tooltip: income.last > 0
+                  ? '\$ ${compactMoney(income.last)}'
+                  : null,
+              series: [
+                LineSeries(
+                  [for (final v in income) v.toDouble()],
+                  color: AppColors.green,
+                  endDot: true,
+                ),
+                LineSeries(
+                  [for (final v in expense) v.toDouble()],
+                  color: const Color(0xFF8A958F),
+                  fill: false,
+                  width: 2.5,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /* ───────────────────────── Gastos por categoría ───────────────────────── */
 
 class _CategoryDonutCard extends StatelessWidget {
+  final FinanceSummary summary;
   final VoidCallback onDetail;
-  const _CategoryDonutCard({required this.onDetail});
+  const _CategoryDonutCard({required this.summary, required this.onDetail});
 
-  static const _items = [
-    (Categories.comida, 35.0, Color(0xFF22C55E)),
-    (Categories.transporte, 28.0, Color(0xFF6D8BF5)),
-    (Categories.compras, 22.0, Color(0xFFF59E0B)),
-    (Categories.hogar, 15.0, Color(0xFF14A85E)),
+  static const _palette = [
+    Color(0xFF22C55E),
+    Color(0xFF6D8BF5),
+    Color(0xFFF59E0B),
+    Color(0xFF14A85E),
+    Color(0xFFA855F7),
   ];
 
   @override
-  Widget build(BuildContext context) => SoftCard(
-    padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-    child: Column(
-      children: [
-        SectionHeader(
-          title: 'Gastos por Categoría',
-          action: 'Ver detalle',
-          onAction: onDetail,
-          fontSize: 17,
-        ),
-        const SizedBox(height: 10),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, c) {
-              final d = math.min(
-                180.0,
-                math.min(c.maxHeight, c.maxWidth * 0.48),
-              );
-              return Row(
-                children: [
-                  SizedBox(
-                    width: d,
-                    height: d,
-                    child: DonutChart(
-                      thickness: d * 0.17,
-                      segments: [
-                        for (final (_, v, color) in _items) (v, color),
-                      ],
-                      center: Column(
-                        mainAxisSize: MainAxisSize.min,
+  Widget build(BuildContext context) {
+    final all = summary.expenseByCategory(summary.monthStart, DateTime(9999));
+    final total = all.fold<int>(0, (a, e) => a + e.$2);
+    final items = all.take(4).toList();
+    return SoftCard(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      child: Column(
+        children: [
+          SectionHeader(
+            title: 'Gastos del mes',
+            action: 'Ver detalle',
+            onAction: onDetail,
+            fontSize: 17,
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: items.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Sin gastos este mes',
+                      style: TextStyle(color: AppColors.muted),
+                    ),
+                  )
+                : LayoutBuilder(
+                    builder: (context, c) {
+                      final d = math.min(
+                        180.0,
+                        math.min(c.maxHeight, c.maxWidth * 0.48),
+                      );
+                      return Row(
                         children: [
-                          FittedBox(
-                            child: Text(
-                              '\$ 1.250.000',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: d * 0.095,
-                                color: AppColors.text,
+                          SizedBox(
+                            width: d,
+                            height: d,
+                            child: DonutChart(
+                              thickness: d * 0.17,
+                              segments: [
+                                for (var i = 0; i < items.length; i++)
+                                  (items[i].$2.toDouble(), _palette[i]),
+                                if (total >
+                                    items.fold<int>(0, (a, e) => a + e.$2))
+                                  (
+                                    (total -
+                                            items.fold<int>(
+                                              0,
+                                              (a, e) => a + e.$2,
+                                            ))
+                                        .toDouble(),
+                                    AppColors.border,
+                                  ),
+                              ],
+                              center: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  FittedBox(
+                                    child: Text(
+                                      formatMoney(total),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: d * 0.095,
+                                        color: AppColors.text,
+                                      ),
+                                    ),
+                                  ),
+                                  const Text(
+                                    'Total',
+                                    style: TextStyle(
+                                      color: AppColors.muted,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                          const Text(
-                            'Total',
-                            style: TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        for (final (cat, v, _) in _items)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(
+                          const SizedBox(width: 18),
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(cat.icon, color: cat.color, size: 20),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    cat.name,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: AppColors.text,
-                                      fontSize: 14,
+                                for (final (cat, v) in items)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 8,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          cat.icon,
+                                          color: cat.color,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            cat.name,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              color: AppColors.text,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          '${(v * 100 / total).round()}%',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.text,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ),
-                                Text(
-                                  '${v.round()}%',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.text,
-                                  ),
-                                ),
                               ],
                             ),
                           ),
-                      ],
-                    ),
+                        ],
+                      );
+                    },
                   ),
-                ],
-              );
-            },
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 /* ───────────────────────── Metas ───────────────────────── */
@@ -659,31 +708,35 @@ class _GoalsCard extends StatelessWidget {
         Expanded(
           child: ValueListenableBuilder<List<Goal>>(
             valueListenable: AppState.goals,
-            builder: (_, goals, _) => Column(
-              children: [
-                Expanded(
-                  child: _GoalMini(
-                    goal: goals[0],
-                    leading: '🌱',
-                    color: AppColors.green,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: _GoalMini(
-                    goal: const Goal(
-                      title: 'Comprar un iPhone',
-                      saved: 800000,
-                      target: 2000000,
-                      emoji: '📱',
-                      color: AppColors.purple,
+            builder: (context, goals, _) => goals.isEmpty
+                ? Center(
+                    child: TextButton.icon(
+                      onPressed: () => showCreateGoalDialog(context),
+                      icon: const Icon(
+                        Icons.add_rounded,
+                        color: AppColors.green,
+                      ),
+                      label: const Text(
+                        'Crear una meta',
+                        style: TextStyle(color: AppColors.green),
+                      ),
                     ),
-                    leading: '🎁',
-                    color: AppColors.purple,
+                  )
+                : Column(
+                    children: [
+                      for (var i = 0; i < math.min(2, goals.length); i++) ...[
+                        if (i > 0) const SizedBox(height: 10),
+                        Expanded(
+                          child: _GoalMini(
+                            goal: goals[i],
+                            color: i == 0 ? AppColors.green : AppColors.purple,
+                            onTap: () => showAddToGoalDialog(context, goals[i]),
+                          ),
+                        ),
+                      ],
+                      if (goals.length == 1) const Spacer(),
+                    ],
                   ),
-                ),
-              ],
-            ),
           ),
         ),
       ],
@@ -693,65 +746,73 @@ class _GoalsCard extends StatelessWidget {
 
 class _GoalMini extends StatelessWidget {
   final Goal goal;
-  final String leading;
   final Color color;
+  final VoidCallback onTap;
   const _GoalMini({
     required this.goal,
-    required this.leading,
     required this.color,
+    required this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: onTap,
       borderRadius: BorderRadius.circular(16),
-      gradient: const LinearGradient(
-        colors: [Color(0xFFF4F9FF), Color(0xFFEAF3FF)],
-      ),
-    ),
-    child: Row(
-      children: [
-        Text(leading, style: const TextStyle(fontSize: 28)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                goal.title,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: AppColors.text,
-                ),
-              ),
-              Text(
-                '${(goal.progress * 100).round()}%',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                  color: AppColors.text,
-                ),
-              ),
-              const SizedBox(height: 4),
-              ProgressBar(value: goal.progress, color: color, height: 5),
-              const SizedBox(height: 4),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  '${formatMoney(goal.saved)} / ${formatMoney(goal.target)}',
-                  style: const TextStyle(color: AppColors.muted, fontSize: 11),
-                ),
-              ),
-            ],
+      child: Ink(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFF4F9FF), Color(0xFFEAF3FF)],
           ),
         ),
-        const SizedBox(width: 6),
-        Text(goal.emoji, style: const TextStyle(fontSize: 30)),
-      ],
+        child: Row(
+          children: [
+            Text(goal.emoji, style: const TextStyle(fontSize: 30)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    goal.title,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  Text(
+                    '${(goal.progress * 100).round()}%',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  ProgressBar(value: goal.progress, color: color, height: 5),
+                  const SizedBox(height: 4),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${formatMoney(goal.saved)} / ${formatMoney(goal.target)}',
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     ),
   );
 }
@@ -759,8 +820,9 @@ class _GoalMini extends StatelessWidget {
 /* ───────────────────────── Últimos movimientos ───────────────────────── */
 
 class _LatestMovements extends StatelessWidget {
+  final List<Txn> txns;
   final VoidCallback onSeeAll;
-  const _LatestMovements({required this.onSeeAll});
+  const _LatestMovements({required this.txns, required this.onSeeAll});
 
   @override
   Widget build(BuildContext context) => SoftCard(
@@ -776,26 +838,61 @@ class _LatestMovements extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Expanded(
-          child: ValueListenableBuilder<List<Txn>>(
-            valueListenable: AppState.transactions,
-            builder: (_, list, _) => ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                for (final t in list.take(3))
-                  TransactionTile(txn: t, dense: true),
-              ],
-            ),
-          ),
+          child: txns.isEmpty
+              ? const Center(
+                  child: Text(
+                    'Aún no hay movimientos',
+                    style: TextStyle(color: AppColors.muted),
+                  ),
+                )
+              : ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    for (final t in txns.take(3))
+                      TransactionTile(txn: t, dense: true),
+                  ],
+                ),
         ),
       ],
     ),
   );
 }
 
-/* ───────────────────────── Finix Pro ───────────────────────── */
+/* ───────────────────────── Resumen del mes ───────────────────────── */
 
-class _ProCard extends StatelessWidget {
-  const _ProCard();
+class _MonthCard extends StatelessWidget {
+  final FinanceSummary summary;
+  const _MonthCard({required this.summary});
+
+  Widget _line(String label, int value, Color color) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.85),
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          formatMoney(value),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+          ),
+        ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) => ClipRRect(
@@ -805,36 +902,13 @@ class _ProCard extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, c) => Stack(
           children: [
-            if (c.maxWidth > 380)
-              Positioned(
-                right: 30,
-                top: 18,
-                bottom: -30,
-                child: Transform.rotate(
-                  angle: 0.22,
-                  child: Container(
-                    width: 120,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF155C3E), Color(0xFF041C12)],
-                      ),
-                      border: Border.all(
-                        color: AppColors.mint.withValues(alpha: 0.6),
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.mint.withValues(alpha: 0.25),
-                          blurRadius: 30,
-                        ),
-                      ],
-                    ),
-                    alignment: Alignment.center,
-                    child: const FinixLogoMark(size: 50),
-                  ),
+            if (c.maxWidth > 400)
+              const Positioned(
+                right: 26,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Text('🐷', style: TextStyle(fontSize: 90)),
                 ),
               ),
             Padding(
@@ -842,52 +916,30 @@ class _ProCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Finix Pro',
-                    style: TextStyle(
+                  Text(
+                    'Resumen de ${monthNames[summary.now.month - 1]}',
+                    style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 26,
+                      fontSize: 24,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Más control, más beneficios.',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.82),
-                      fontSize: 14,
-                    ),
+                  const SizedBox(height: 14),
+                  _line('Ingresos', summary.monthIncome, AppColors.mint),
+                  _line(
+                    'Gastos',
+                    summary.monthExpense,
+                    const Color(0xFFF97316),
                   ),
-                  const SizedBox(height: 12),
-                  for (final f in const [
-                    'Reportes avanzados',
-                    'Sin anuncios',
-                    'Soporte prioritario',
-                  ])
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.check_circle_rounded,
-                            color: AppColors.mint,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            f,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  _line(
+                    'Ahorro',
+                    summary.monthSavings,
+                    const Color(0xFF6D8BF5),
+                  ),
                   const Spacer(),
                   WhitePillButton(
-                    label: 'Actualizar Ahora',
-                    onPressed: () => showSoon(context, 'Finix Pro'),
+                    label: 'Agregar movimiento',
+                    onPressed: () => DesktopDashboard.openAdd(context, false),
                   ),
                 ],
               ),

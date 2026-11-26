@@ -496,7 +496,28 @@ class UserAvatar extends StatelessWidget {
             ],
           ),
           alignment: Alignment.center,
-          child: Text('👨🏻', style: TextStyle(fontSize: size * 0.55)),
+          clipBehavior: Clip.antiAlias,
+          child: ValueListenableBuilder<AppUser?>(
+            valueListenable: AppState.user,
+            builder: (_, u, _) {
+              final initials = Text(
+                u?.initials.isNotEmpty == true ? u!.initials : '👤',
+                style: TextStyle(
+                  fontSize: size * 0.36,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                ),
+              );
+              if (u?.avatarUrl == null) return initials;
+              return Image.network(
+                u!.avatarUrl!,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => initials,
+              );
+            },
+          ),
         ),
         if (online)
           Positioned(
@@ -794,3 +815,109 @@ void showSoon(BuildContext context, String what) =>
           backgroundColor: AppColors.primaryDark,
         ),
       );
+
+/// "↑ +12%" en verde o "↓ -8%" en rojo.
+class ChangeLabel extends StatelessWidget {
+  final double percent;
+  final bool onDark;
+  final String suffix;
+  const ChangeLabel(
+    this.percent, {
+    super.key,
+    this.onDark = false,
+    this.suffix = '',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final up = percent >= 0;
+    final color = up ? AppColors.green : AppColors.red;
+    final text =
+        '${up ? '+' : ''}${percent.toStringAsFixed(percent.abs() >= 10 ? 0 : 1)}%';
+    if (onDark) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            child: Icon(
+              up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+              size: 11,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              '$text$suffix',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.8),
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+          size: 15,
+          color: color,
+        ),
+        Flexible(
+          child: Text(
+            '$text$suffix',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: color, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Mensaje para cuando todavía no hay datos.
+class EmptyHint extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  const EmptyHint({
+    super.key,
+    required this.icon,
+    required this.text,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) => SoftCard(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 40, color: AppColors.green.withValues(alpha: 0.7)),
+        const SizedBox(height: 10),
+        Text(
+          text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.muted, height: 1.4),
+        ),
+        if (actionLabel != null) ...[
+          const SizedBox(height: 14),
+          PrimaryButton(
+            label: actionLabel!,
+            onPressed: onAction,
+            height: 46,
+            arrow: false,
+          ),
+        ],
+      ],
+    ),
+  );
+}

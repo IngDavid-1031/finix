@@ -1,12 +1,75 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/backgrounds.dart';
 import '../widgets/common.dart';
 import 'login_screen.dart';
 
-class RegisterScreen extends StatelessWidget {
+class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _register() async {
+    if (_name.text.trim().isEmpty ||
+        _email.text.trim().isEmpty ||
+        _password.text.isEmpty) {
+      showError(context, 'Completa todos los campos');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final user = await AuthService.register(
+        _name.text,
+        _email.text,
+        _password.text,
+      );
+      if (!mounted) return;
+      if (user != null) {
+        enterApp(context, user);
+      } else {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: Colors.white,
+            title: const Text('Revisa tu correo'),
+            content: Text(
+              'Te enviamos un enlace a ${_email.text.trim()} para confirmar tu cuenta. '
+              'Después vuelve e inicia sesión.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Entendido'),
+              ),
+            ],
+          ),
+        );
+        if (mounted) Navigator.of(context).maybePop();
+      }
+    } catch (e) {
+      if (mounted) showError(context, AuthService.errorMessage(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -61,26 +124,29 @@ class RegisterScreen extends StatelessWidget {
                         style: TextStyle(color: AppColors.muted, fontSize: 15),
                       ),
                       const SizedBox(height: 30),
-                      const FinixField(
+                      FinixField(
                         hint: 'Nombre completo',
                         icon: Icons.person_outline_rounded,
+                        controller: _name,
                       ),
                       const SizedBox(height: 14),
-                      const FinixField(
+                      FinixField(
                         hint: 'Correo electrónico',
                         icon: Icons.mail_outline_rounded,
                         keyboardType: TextInputType.emailAddress,
+                        controller: _email,
                       ),
                       const SizedBox(height: 14),
-                      const FinixField(
-                        hint: 'Contraseña',
+                      FinixField(
+                        hint: 'Contraseña (mínimo 6 caracteres)',
                         icon: Icons.lock_outline_rounded,
                         obscure: true,
+                        controller: _password,
                       ),
                       const SizedBox(height: 26),
                       PrimaryButton(
-                        label: 'Crear cuenta',
-                        onPressed: () => enterApp(context),
+                        label: _loading ? 'Creando cuenta…' : 'Crear cuenta',
+                        onPressed: _loading ? null : _register,
                       ),
                       const SizedBox(height: 22),
                       const Text.rich(

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/finance_data.dart';
+import '../services/auth_service.dart';
+import '../services/database_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common.dart';
 
@@ -40,40 +42,48 @@ class _AddMovementScreenState extends State<AddMovementScreen> {
     if (d != null) setState(() => _date = d);
   }
 
-  void _save() {
+  bool _saving = false;
+
+  Future<void> _save() async {
     final digits = _amount.text.replaceAll(RegExp(r'[^0-9]'), '');
     final value = int.tryParse(digits) ?? 0;
     final messenger = ScaffoldMessenger.of(context);
-    if (value == 0) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Ingresa un monto'),
+    void toast(String msg, Color color) => messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(msg),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: AppColors.red,
+          backgroundColor: color,
         ),
       );
+    if (value == 0) {
+      toast('Ingresa un monto', AppColors.red);
       return;
     }
     final cat = _cats[_category];
-    AppState.addTransaction(
-      Txn(
-        title: cat.name,
-        category: cat,
-        amount: _type == 0 ? -value : value,
-        date: _date,
-        note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-      ),
-    );
-    Navigator.of(context).pop();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          '${_type == 0 ? 'Gasto' : 'Ingreso'} guardado: ${formatMoney(value)}',
+    setState(() => _saving = true);
+    try {
+      await DatabaseService.addTransaction(
+        Txn(
+          title: cat.name,
+          category: cat,
+          amount: _type == 0 ? -value : value,
+          date: _date,
+          note: _note.text.trim().isEmpty ? null : _note.text.trim(),
         ),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.primaryDark,
-      ),
-    );
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      toast(
+        '${_type == 0 ? 'Gasto' : 'Ingreso'} guardado: ${formatMoney(value)}',
+        AppColors.primaryDark,
+      );
+    } catch (e) {
+      toast(AuthService.errorMessage(e), AppColors.red);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -247,7 +257,10 @@ class _AddMovementScreenState extends State<AddMovementScreen> {
         const SizedBox(height: 8),
         FinixField(hint: 'Ej: Almuerzo en la ciudad', controller: _note),
         const SizedBox(height: 26),
-        PrimaryButton(label: 'Guardar', onPressed: _save),
+        PrimaryButton(
+          label: _saving ? 'Guardando…' : 'Guardar',
+          onPressed: _saving ? null : _save,
+        ),
       ],
     ),
   );

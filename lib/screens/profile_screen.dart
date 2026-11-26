@@ -15,49 +15,29 @@ class ProfileScreen extends StatelessWidget {
     children: [
       const Center(child: UserAvatar(size: 100)),
       const SizedBox(height: 12),
-      const Text(
-        'Noaj David',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 21,
-          fontWeight: FontWeight.w800,
-          color: AppColors.text,
-        ),
-      ),
-      const SizedBox(height: 2),
-      const Text(
-        'noajdavid@gmail.com',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: AppColors.muted, fontSize: 13),
-      ),
-      const SizedBox(height: 10),
-      Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(
-            color: AppColors.greenSoft,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.verified_rounded, size: 15, color: AppColors.green),
-              SizedBox(width: 4),
-              Text(
-                'Usuario Premium',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
+      ValueListenableBuilder<AppUser?>(
+        valueListenable: AppState.user,
+        builder: (_, u, _) => Column(
+          children: [
+            Text(
+              u == null || u.name.isEmpty ? 'Mi cuenta' : u.name,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+                color: AppColors.text,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              u?.email ?? '',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.muted, fontSize: 13),
+            ),
+          ],
         ),
       ),
-      const SizedBox(height: 20),
-      const PremiumBanner(),
-      const SizedBox(height: 16),
+      const SizedBox(height: 22),
       SoftCard(
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
         child: Column(
@@ -108,55 +88,5 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
     ],
-  );
-}
-
-class PremiumBanner extends StatelessWidget {
-  const PremiumBanner({super.key});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      gradient: AppColors.darkGradient,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: AppColors.primary.withValues(alpha: 0.3),
-          blurRadius: 16,
-          offset: const Offset(0, 6),
-        ),
-      ],
-    ),
-    child: Row(
-      children: [
-        const Text('👑', style: TextStyle(fontSize: 30)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Tu plan Premium',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Disfruta de todas las ventajas',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.75),
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const Icon(Icons.chevron_right_rounded, color: Colors.white),
-      ],
-    ),
   );
 }

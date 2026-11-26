@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/finance_data.dart';
+import '../services/database_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common.dart';
 
@@ -94,7 +95,47 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 itemCount: list.length,
                 separatorBuilder: (_, _) =>
                     const Divider(height: 1, color: AppColors.border),
-                itemBuilder: (_, i) => TransactionTile(txn: list[i]),
+                itemBuilder: (context, i) {
+                  final t = list[i];
+                  return Dismissible(
+                    key: ValueKey(t.id ?? identityHashCode(t)),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      color: AppColors.redSoft,
+                      child: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: AppColors.red,
+                      ),
+                    ),
+                    confirmDismiss: (_) => showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: Colors.white,
+                        title: const Text('Eliminar movimiento'),
+                        content: Text(
+                          '¿Eliminar "${t.title}" por ${formatMoney(t.amount)}?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancelar'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text(
+                              'Eliminar',
+                              style: TextStyle(color: AppColors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    onDismissed: (_) => DatabaseService.deleteTransaction(t),
+                    child: TransactionTile(txn: t),
+                  );
+                },
               );
             },
           ),

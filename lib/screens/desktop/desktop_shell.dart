@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../data/finance_data.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/backgrounds.dart';
 import '../../widgets/common.dart';
 import '../categories_screen.dart';
 import '../goals_screen.dart';
 import '../history_screen.dart';
+import '../login_screen.dart';
 import '../profile_screen.dart';
 import '../settings_screen.dart';
 import '../stats_screen.dart';
@@ -119,7 +121,12 @@ class _Sidebar extends StatelessWidget {
                   ],
                 ),
               ),
-              const _UpgradeCard(),
+              _NavItem(
+                icon: Icons.logout_rounded,
+                label: 'Cerrar sesión',
+                selected: false,
+                onTap: () => logout(context),
+              ),
             ],
           ),
         ),
@@ -186,88 +193,6 @@ class _NavItem extends StatelessWidget {
   );
 }
 
-class _UpgradeCard extends StatelessWidget {
-  const _UpgradeCard();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.07),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Row(
-          children: [
-            Text('👑', style: TextStyle(fontSize: 20)),
-            SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                'Upgrade Pro',
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Lleva tus finanzas\nal siguiente nivel',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.78),
-            fontSize: 13,
-            height: 1.35,
-          ),
-        ),
-        const SizedBox(height: 14),
-        Material(
-          color: const Color(0xFF0A3D28),
-          borderRadius: BorderRadius.circular(14),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => showSoon(context, 'Finix Pro'),
-            child: Container(
-              height: 42,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: AppColors.mint.withValues(alpha: 0.35),
-                ),
-              ),
-              alignment: Alignment.center,
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Actualizar',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  SizedBox(width: 6),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
 class _TopBar extends StatelessWidget {
   final VoidCallback onProfile;
   const _TopBar({required this.onProfile});
@@ -302,7 +227,6 @@ class _TopBar extends StatelessWidget {
         const Spacer(),
         IconCircleButton(
           icon: Icons.notifications_none_rounded,
-          badge: true,
           size: 50,
           onTap: () => showSoon(context, 'El centro de notificaciones'),
         ),
@@ -310,31 +234,40 @@ class _TopBar extends StatelessWidget {
         InkWell(
           borderRadius: BorderRadius.circular(30),
           onTap: onProfile,
-          child: const Padding(
-            padding: EdgeInsets.all(4),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
             child: Row(
               children: [
-                UserAvatar(size: 50, online: true),
-                SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Noaj David',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: AppColors.text,
+                const UserAvatar(size: 50, online: true),
+                const SizedBox(width: 12),
+                ValueListenableBuilder<AppUser?>(
+                  valueListenable: AppState.user,
+                  builder: (_, u, _) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        u == null || u.name.isEmpty ? 'Mi cuenta' : u.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: AppColors.text,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Usuario Premium',
-                      style: TextStyle(color: AppColors.muted, fontSize: 12),
-                    ),
-                  ],
+                      Text(
+                        u?.email ?? '',
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                SizedBox(width: 10),
-                Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.text),
+                const SizedBox(width: 10),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.text,
+                ),
               ],
             ),
           ),

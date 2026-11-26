@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+/* ───────────────────────────── Categorías ───────────────────────────── */
+
 class Category {
   final String name;
   final IconData icon;
@@ -69,9 +71,20 @@ class Categories {
 
   static const expense = [comida, transporte, compras, hogar, salud, otros];
   static const income = [salario, ahorro, ventas, regalos, inversiones, otros];
+
+  static const _all = [
+    comida, transporte, compras, hogar, salud, otros, //
+    servicios, salario, ahorro, ventas, regalos, inversiones,
+  ];
+
+  static Category byName(String? name) =>
+      _all.firstWhere((c) => c.name == name, orElse: () => otros);
 }
 
+/* ───────────────────────────── Modelos ───────────────────────────── */
+
 class Txn {
+  final String? id;
   final String title;
   final Category category;
   final int amount; // negativo = gasto, positivo = ingreso
@@ -79,6 +92,7 @@ class Txn {
   final String? note;
 
   const Txn({
+    this.id,
     required this.title,
     required this.category,
     required this.amount,
@@ -87,106 +101,107 @@ class Txn {
   });
 
   bool get isIncome => amount > 0;
+
+  factory Txn.fromMap(Map<String, dynamic> m) => Txn(
+    id: m['id'] as String?,
+    title: m['title'] as String? ?? '',
+    category: Categories.byName(m['category'] as String?),
+    amount: (m['amount'] as num?)?.toInt() ?? 0,
+    date:
+        DateTime.tryParse(m['date'] as String? ?? '')?.toLocal() ??
+        DateTime.now(),
+    note: m['note'] as String?,
+  );
+
+  Map<String, dynamic> toInsert() => {
+    'title': title,
+    'category': category.name,
+    'amount': amount,
+    'date': date.toUtc().toIso8601String(),
+    'note': note,
+  };
 }
 
 class Goal {
+  final String? id;
   final String title;
   final int saved;
   final int target;
   final String emoji;
-  final Color color;
 
   const Goal({
+    this.id,
     required this.title,
     required this.saved,
     required this.target,
     required this.emoji,
-    required this.color,
   });
 
+  Color get color => const Color(0xFF1FB86A);
   double get progress =>
       target == 0 ? 0 : (saved / target).clamp(0, 1).toDouble();
 
   Goal copyWith({int? saved}) => Goal(
+    id: id,
     title: title,
     saved: saved ?? this.saved,
     target: target,
     emoji: emoji,
-    color: color,
   );
+
+  factory Goal.fromMap(Map<String, dynamic> m) => Goal(
+    id: m['id'] as String?,
+    title: m['title'] as String? ?? '',
+    saved: (m['saved'] as num?)?.toInt() ?? 0,
+    target: (m['target'] as num?)?.toInt() ?? 1,
+    emoji: m['emoji'] as String? ?? '🎯',
+  );
+
+  Map<String, dynamic> toInsert() => {
+    'title': title,
+    'saved': saved,
+    'target': target,
+    'emoji': emoji,
+  };
 }
 
-/// Estado en memoria de la app (datos de ejemplo hasta conectar el backend).
+class AppUser {
+  final String id;
+  final String name;
+  final String email;
+  final String? avatarUrl;
+
+  const AppUser({
+    required this.id,
+    required this.name,
+    required this.email,
+    this.avatarUrl,
+  });
+
+  String get firstName =>
+      name.trim().isEmpty ? '' : name.trim().split(RegExp(r'\s+')).first;
+
+  String get initials {
+    final parts = (name.trim().isEmpty ? email : name).trim().split(
+      RegExp(r'\s+'),
+    );
+    return parts.take(2).map((p) => p.isEmpty ? '' : p[0].toUpperCase()).join();
+  }
+}
+
+/* ───────────────────────────── Estado global ───────────────────────────── */
+
+/// Estado de la app. Cuando hay sesión, `DatabaseService` lo llena con los
+/// datos de Supabase en tiempo real; sin sesión queda vacío.
 class AppState {
   AppState._();
 
-  static DateTime _daysAgo(int d) {
-    final n = DateTime.now();
-    return DateTime(n.year, n.month, n.day).subtract(Duration(days: d));
-  }
+  /// true si Supabase se inicializó correctamente.
+  static bool backendReady = false;
 
-  static final transactions = ValueNotifier<List<Txn>>([
-    Txn(
-      title: 'Comida',
-      category: Categories.comida,
-      amount: -45000,
-      date: _daysAgo(0),
-    ),
-    Txn(
-      title: 'Salario',
-      category: Categories.salario,
-      amount: 1500000,
-      date: _daysAgo(1),
-    ),
-    Txn(
-      title: 'Transporte',
-      category: Categories.transporte,
-      amount: -20000,
-      date: _daysAgo(1),
-    ),
-    Txn(
-      title: 'Compras',
-      category: Categories.compras,
-      amount: -120000,
-      date: _daysAgo(3),
-    ),
-    Txn(
-      title: 'Servicios',
-      category: Categories.servicios,
-      amount: -90000,
-      date: _daysAgo(5),
-    ),
-    Txn(
-      title: 'Ahorro',
-      category: Categories.ahorro,
-      amount: 200000,
-      date: _daysAgo(6),
-    ),
-  ]);
-
-  static final goals = ValueNotifier<List<Goal>>(const [
-    Goal(
-      title: 'Viaje a Japón',
-      saved: 1400000,
-      target: 2000000,
-      emoji: '✈️',
-      color: Color(0xFF1FB86A),
-    ),
-    Goal(
-      title: 'Nuevo celular',
-      saved: 600000,
-      target: 1200000,
-      emoji: '📱',
-      color: Color(0xFF1FB86A),
-    ),
-    Goal(
-      title: 'Casa propia',
-      saved: 10000000,
-      target: 50000000,
-      emoji: '🏠',
-      color: Color(0xFF1FB86A),
-    ),
-  ]);
+  static final user = ValueNotifier<AppUser?>(null);
+  static final transactions = ValueNotifier<List<Txn>>([]);
+  static final goals = ValueNotifier<List<Goal>>([]);
 
   static final notifications = ValueNotifier<bool>(true);
   static final reminders = ValueNotifier<bool>(true);
@@ -196,15 +211,87 @@ class AppState {
   /// 0 = Claro, 1 = Oscuro, 2 = Automático
   static final appearance = ValueNotifier<int>(2);
 
-  static void addTransaction(Txn t) =>
-      transactions.value = [t, ...transactions.value];
+  /// Datos de ejemplo solo para desarrollo (--dart-define=START=...).
+  static void loadDemoData() {
+    DateTime ago(int d) {
+      final n = DateTime.now();
+      return DateTime(n.year, n.month, n.day).subtract(Duration(days: d));
+    }
 
-  static void addToGoal(int index, int amount) {
-    final list = [...goals.value];
-    list[index] = list[index].copyWith(saved: list[index].saved + amount);
-    goals.value = list;
+    user.value = const AppUser(
+      id: 'demo',
+      name: 'Usuario Demo',
+      email: 'demo@finix.app',
+    );
+    transactions.value = [
+      Txn(
+        title: 'Comida',
+        category: Categories.comida,
+        amount: -45000,
+        date: ago(0),
+      ),
+      Txn(
+        title: 'Salario',
+        category: Categories.salario,
+        amount: 3200000,
+        date: ago(1),
+      ),
+      Txn(
+        title: 'Transporte',
+        category: Categories.transporte,
+        amount: -20000,
+        date: ago(1),
+      ),
+      Txn(
+        title: 'Compras',
+        category: Categories.compras,
+        amount: -120000,
+        date: ago(3),
+      ),
+      Txn(
+        title: 'Servicios',
+        category: Categories.servicios,
+        amount: -90000,
+        date: ago(5),
+      ),
+      Txn(
+        title: 'Salario',
+        category: Categories.salario,
+        amount: 3000000,
+        date: ago(32),
+      ),
+      Txn(
+        title: 'Hogar',
+        category: Categories.hogar,
+        amount: -900000,
+        date: ago(40),
+      ),
+      Txn(
+        title: 'Salario',
+        category: Categories.salario,
+        amount: 2800000,
+        date: ago(62),
+      ),
+      Txn(
+        title: 'Compras',
+        category: Categories.compras,
+        amount: -1500000,
+        date: ago(70),
+      ),
+    ];
+    goals.value = const [
+      Goal(
+        title: 'Viaje a Japón',
+        saved: 1400000,
+        target: 2000000,
+        emoji: '✈️',
+      ),
+      Goal(title: 'Nuevo celular', saved: 600000, target: 1200000, emoji: '📱'),
+    ];
   }
 }
+
+/* ───────────────────────────── Formatos ───────────────────────────── */
 
 /// Formato de moneda colombiano: $ 2.750.000
 String formatMoney(num value, {bool withSign = false}) {
@@ -218,7 +305,18 @@ String formatMoney(num value, {bool withSign = false}) {
   return '$sign\$ $b';
 }
 
-const _months = [
+/// Formato corto para ejes: 1,2M · 850K · 0
+String compactMoney(num v) {
+  final a = v.abs();
+  String trim(double x) => x
+      .toStringAsFixed(x >= 10 || x == x.roundToDouble() ? 0 : 1)
+      .replaceAll('.', ',');
+  if (a >= 1000000) return '${v < 0 ? '-' : ''}${trim(a / 1000000)}M';
+  if (a >= 1000) return '${v < 0 ? '-' : ''}${trim(a / 1000)}K';
+  return v.round().toString();
+}
+
+const monthNames = [
   'Ene',
   'Feb',
   'Mar',
@@ -238,11 +336,11 @@ String dateLabel(DateTime d) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final diff = today.difference(DateTime(d.year, d.month, d.day)).inDays;
-  final md = '${d.day.toString().padLeft(2, '0')} ${_months[d.month - 1]}';
+  final md = '${d.day.toString().padLeft(2, '0')} ${monthNames[d.month - 1]}';
   if (diff == 0) return 'Hoy, $md';
   if (diff == 1) return 'Ayer, $md';
   return '${_days[d.weekday - 1]}, $md';
 }
 
 String dateLabelWithYear(DateTime d) =>
-    '${dateLabel(d).split(',').first}, ${d.day} ${_months[d.month - 1]} ${d.year}';
+    '${dateLabel(d).split(',').first}, ${d.day} ${monthNames[d.month - 1]} ${d.year}';

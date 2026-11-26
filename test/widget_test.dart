@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:finix/data/finance_data.dart';
 import 'package:finix/main.dart';
 import 'package:finix/screens/home_shell.dart';
 import 'package:finix/widgets/bottom_nav.dart';
@@ -24,9 +25,13 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 
+      AppState.loadDemoData();
       await tester.pumpWidget(const MaterialApp(home: HomeShell()));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Hola, Noaj', skipOffstage: false), findsOneWidget);
+      expect(
+        find.textContaining('Hola, Usuario', skipOffstage: false),
+        findsOneWidget,
+      );
 
       // La barra inferior (solo móvil) no debe ocupar toda la pantalla.
       final nav = find.byType(FinixBottomNav);
