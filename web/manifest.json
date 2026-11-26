@@ -1,11 +1,11 @@
 {
-    "name": "finix",
-    "short_name": "finix",
+    "name": "Finix",
+    "short_name": "Finix",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0B5A3A",
+    "theme_color": "#0B5A3A",
+    "description": "Controla tus finanzas, construye tus sueños",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
