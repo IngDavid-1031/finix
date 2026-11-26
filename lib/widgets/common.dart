@@ -16,63 +16,20 @@ class FinixLogoMark extends StatelessWidget {
   final double size;
   const FinixLogoMark({super.key, this.size = 48});
 
-  @override
-  Widget build(BuildContext context) =>
-      CustomPaint(size: Size(size * 0.9, size), painter: _LogoPainter());
-}
-
-class _LogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width, h = size.height;
-    final paint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topRight,
-        end: Alignment.bottomLeft,
-        colors: [Color(0xFF6CF5AE), Color(0xFF1CC46F), Color(0xFF0A7A43)],
-      ).createShader(Offset.zero & size);
-
-    canvas.save();
-    canvas.translate(h * 0.12, 0);
-    canvas.skew(-0.12, 0);
-
-    final r = Radius.circular(w * 0.16);
-    // Tallo
-    canvas.drawRRect(
-      RRect.fromRectAndCorners(
-        Rect.fromLTWH(0, h * 0.3, w * 0.34, h * 0.7),
-        bottomLeft: r,
-        bottomRight: r,
-      ),
-      paint,
-    );
-    // Barra superior curva
-    canvas.drawPath(
-      Path()
-        ..moveTo(0, h * 0.34)
-        ..quadraticBezierTo(0, 0, w * 0.32, 0)
-        ..lineTo(w * 0.88, 0)
-        ..quadraticBezierTo(w * 0.84, h * 0.30, w * 0.52, h * 0.30)
-        ..lineTo(w * 0.34, h * 0.30)
-        ..lineTo(w * 0.34, h * 0.34)
-        ..close(),
-      paint,
-    );
-    // Barra media
-    canvas.drawPath(
-      Path()
-        ..moveTo(w * 0.30, h * 0.44)
-        ..lineTo(w * 0.74, h * 0.44)
-        ..quadraticBezierTo(w * 0.70, h * 0.66, w * 0.46, h * 0.66)
-        ..lineTo(w * 0.30, h * 0.66)
-        ..close(),
-      paint,
-    );
-    canvas.restore();
-  }
+  /// Logo oficial (Logos/logo1.png → assets/images/logo.png).
+  static const asset = 'assets/images/logo.png';
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(size * 0.24),
+    child: Image.asset(
+      asset,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      filterQuality: FilterQuality.medium,
+    ),
+  );
 }
 
 class FinixLogo extends StatelessWidget {
