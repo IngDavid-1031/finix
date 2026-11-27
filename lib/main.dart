@@ -6,6 +6,7 @@ import 'config/supabase_config.dart';
 import 'data/finance_data.dart';
 import 'screens/home_shell.dart';
 import 'screens/splash_screen.dart';
+import 'services/bank_detector.dart';
 import 'theme/app_colors.dart';
 
 /// Para desarrollo: --dart-define=START=home|stats|goals|profile abre esa
@@ -27,6 +28,7 @@ Future<void> main() async {
   } else {
     AppState.loadDemoData();
   }
+  BankDetector.init();
   runApp(const FinixApp());
 }
 

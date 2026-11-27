@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Necesario para conectarse a Supabase en el APK de release -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Detección automática de movimientos del banco -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS"/>
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
         android:label="Finix"
@@ -35,6 +39,34 @@
                 <data android:scheme="io.supabase.finix" android:host="login-callback"/>
             </intent-filter>
         </activity>
+        <!-- Banner al tocar la notificación de movimiento detectado -->
+        <activity
+            android:name=".BannerActivity"
+            android:exported="false"
+            android:theme="@style/BannerTheme"
+            android:taskAffinity="com.example.finix.banner"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"/>
+        <!-- Lee las notificaciones del banco en segundo plano -->
+        <service
+            android:name=".BankNotificationListener"
+            android:label="Finix"
+            android:exported="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService"/>
+            </intent-filter>
+        </service>
+        <!-- Lee los SMS del banco aunque la app esté cerrada -->
+        <receiver
+            android:name=".SmsReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
+            </intent-filter>
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

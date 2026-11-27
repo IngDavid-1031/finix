@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/finance_data.dart';
+import 'bank_detector.dart';
 
 /// Lectura y escritura de datos del usuario en Supabase.
 ///
@@ -77,6 +78,9 @@ class DatabaseService {
     } catch (_) {
       // Si falla (p. ej. aún no se ejecutó schema.sql) la app sigue funcionando.
     }
+
+    // Movimientos que Finix detectó del banco mientras la app estaba cerrada.
+    await BankDetector.sync();
   }
 
   static void unbind() {

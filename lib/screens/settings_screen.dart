@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../data/finance_data.dart';
 import '../theme/app_colors.dart';
+import '../services/bank_detector.dart';
+import '../widgets/bank_detection_card.dart';
 import '../widgets/common.dart';
 import 'login_screen.dart';
 
@@ -124,6 +126,10 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
         ),
+        if (BankDetector.supported) ...[
+          const SizedBox(height: 22),
+          const BankDetectionCard(),
+        ],
         const SizedBox(height: 14),
         SoftCard(
           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
