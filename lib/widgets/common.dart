@@ -16,17 +16,17 @@ class FinixLogoMark extends StatelessWidget {
   final double size;
   const FinixLogoMark({super.key, this.size = 48});
 
-  /// Logo oficial (Logos/logo1.png → assets/images/logo.png).
+  /// Logo oficial (Logos/Logo2.png → assets/images/logo.png, ya con esquinas redondeadas).
   static const asset = 'assets/images/logo.png';
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(size * 0.24),
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: size,
     child: Image.asset(
       asset,
       width: size,
       height: size,
-      fit: BoxFit.cover,
+      fit: BoxFit.contain,
       filterQuality: FilterQuality.medium,
     ),
   );
