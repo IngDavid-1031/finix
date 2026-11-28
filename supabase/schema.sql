@@ -40,15 +40,31 @@ create table if not exists public.goals (
 );
 create index if not exists goals_user_idx on public.goals (user_id, created_at);
 
+-- ---------- Pagos fijos mensuales (arriendo, planes, servicios…) ----------
+create table if not exists public.bills (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  title        text not null,
+  amount       bigint not null check (amount > 0),
+  due_day      smallint not null check (due_day between 1 and 31),   -- día del mes en que vence
+  emoji        text not null default '🧾',
+  category     text not null default 'Servicios',
+  remind_days  smallint not null default 3 check (remind_days between 0 and 15),
+  paid_month   text,                                                 -- 'YYYY-MM' del último mes pagado
+  created_at   timestamptz not null default now()
+);
+create index if not exists bills_user_idx on public.bills (user_id, due_day);
+
 -- ---------- Permisos para usuarios con sesión iniciada (las políticas de abajo filtran por usuario) ----------
 grant usage on schema public to authenticated;
-grant select, insert, update, delete on public.profiles, public.transactions, public.goals to authenticated;
-revoke all on public.profiles, public.transactions, public.goals from anon;
+grant select, insert, update, delete on public.profiles, public.transactions, public.goals, public.bills to authenticated;
+revoke all on public.profiles, public.transactions, public.goals, public.bills from anon;
 
 -- ---------- Seguridad: cada usuario solo ve y modifica lo suyo ----------
 alter table public.profiles     enable row level security;
 alter table public.transactions enable row level security;
 alter table public.goals        enable row level security;
+alter table public.bills        enable row level security;
 
 drop policy if exists "profiles: own" on public.profiles;
 create policy "profiles: own" on public.profiles
@@ -62,6 +78,11 @@ create policy "transactions: own" on public.transactions
 
 drop policy if exists "goals: own" on public.goals;
 create policy "goals: own" on public.goals
+  for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists "bills: own" on public.bills;
+create policy "bills: own" on public.bills
   for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
@@ -95,4 +116,5 @@ do $$
 begin
   begin alter publication supabase_realtime add table public.transactions; exception when duplicate_object then null; end;
   begin alter publication supabase_realtime add table public.goals;        exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.bills;        exception when duplicate_object then null; end;
 end $$;

@@ -86,6 +86,14 @@ class _BankDetectionCardState extends State<BankDetectionCard> {
                 ok: _s.overlay,
                 onTap: BankDetector.openOverlay,
               ),
+              if (_s.xiaomi)
+                _PermissionTile(
+                  icon: Icons.open_in_new_rounded,
+                  title: 'Ventanas emergentes en segundo plano',
+                  ok: _s.popups ?? false,
+                  unknown: _s.popups == null,
+                  onTap: BankDetector.openMiuiPermissions,
+                ),
               MenuTile(
                 icon: Icons.battery_saver_outlined,
                 title: 'Segundo plano y autoinicio',
@@ -118,9 +126,15 @@ class _BankDetectionCardState extends State<BankDetectionCard> {
           padding: EdgeInsets.fromLTRB(6, 8, 6, 0),
           child: Text(
             'Toca cada opción en rojo para darle el permiso a Finix. En Xiaomi, '
-            'en “Segundo plano y autoinicio” activa Autoinicio y quita el '
-            'ahorro de batería.',
-            style: TextStyle(fontSize: 12, color: AppColors.muted, height: 1.35),
+            'en “Ventanas emergentes en segundo plano” activa “Mostrar ventanas '
+            'emergentes mientras se ejecuta en segundo plano”, y en “Segundo '
+            'plano y autoinicio” activa Autoinicio y pon el ahorro de batería '
+            'en “Sin restricciones”.',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.muted,
+              height: 1.35,
+            ),
           ),
         ),
     ],
@@ -131,12 +145,14 @@ class _PermissionTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final bool ok;
+  final bool unknown;
   final VoidCallback onTap;
   const _PermissionTile({
     required this.icon,
     required this.title,
     required this.ok,
     required this.onTap,
+    this.unknown = false,
   });
 
   @override
@@ -147,15 +163,27 @@ class _PermissionTile extends StatelessWidget {
     trailing: Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: ok ? AppColors.greenSoft : AppColors.redSoft,
+        color: ok
+            ? AppColors.greenSoft
+            : unknown
+            ? AppColors.bg
+            : AppColors.redSoft,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        ok ? 'Activo' : 'Activar',
+        ok
+            ? 'Activo'
+            : unknown
+            ? 'Revisar'
+            : 'Activar',
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
-          color: ok ? AppColors.green : AppColors.red,
+          color: ok
+              ? AppColors.green
+              : unknown
+              ? AppColors.muted
+              : AppColors.red,
         ),
       ),
     ),

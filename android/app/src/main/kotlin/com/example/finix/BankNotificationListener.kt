@@ -1,13 +1,15 @@
 package com.example.finix
 
 import android.app.Notification
+import android.content.ComponentName
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 
 /**
  * Android mantiene este servicio vivo en segundo plano (aunque Finix esté cerrada)
- * y le pasa cada notificación: SMS del banco, app de Bancolombia, Nequi, etc.
+ * y le pasa cada notificación: SMS del banco, app de Bancolombia, Nequi,
+ * Billetera de Google, etc.
  */
 class BankNotificationListener : NotificationListenerService() {
 
@@ -16,11 +18,28 @@ class BankNotificationListener : NotificationListenerService() {
         "com.instagram.android", "com.google.android.gm",
     )
 
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        // Si el sistema nos desconecta, pedimos volver a conectarnos.
+        try {
+            requestRebind(ComponentName(this, BankNotificationListener::class.java))
+        } catch (_: Exception) {}
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName == packageName || sbn.packageName in skip) return
         val n = sbn.notification ?: return
         if (n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
         val ex = n.extras ?: return
+
+        // Pagos con el celular (Billetera de Google, Samsung Wallet).
+        BankParser.walletApps[sbn.packageName]?.let { app ->
+            val title = ex.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
+            val body = (ex.getCharSequence(Notification.EXTRA_BIG_TEXT)
+                ?: ex.getCharSequence(Notification.EXTRA_TEXT))?.toString().orEmpty()
+            BankParser.parseWallet(title, body, app)?.let { BankBridge.handleResult(this, it) }
+            return
+        }
 
         val texts = mutableListOf<String>()
         val now = System.currentTimeMillis()

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../services/reminder_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav.dart';
 import 'add_movement_screen.dart';
+import 'bills_screen.dart';
 import 'categories_screen.dart';
 import 'desktop/desktop_shell.dart';
 import 'goals_screen.dart';
@@ -38,6 +40,26 @@ class MobileShell extends StatefulWidget {
 
 class _MobileShellState extends State<MobileShell> {
   late int _index = widget.initialTab;
+
+  @override
+  void initState() {
+    super.initState();
+    ReminderService.openBills.addListener(_openBills);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openBills());
+  }
+
+  @override
+  void dispose() {
+    ReminderService.openBills.removeListener(_openBills);
+    super.dispose();
+  }
+
+  /// Al tocar la notificación de un pago, abre "Pagos fijos".
+  void _openBills() {
+    if (!mounted || !ReminderService.openBills.value) return;
+    ReminderService.openBills.value = false;
+    _push(const BillsScreen(standalone: true));
+  }
 
   void _push(Widget page) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));

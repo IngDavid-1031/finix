@@ -3,11 +3,17 @@ import 'package:flutter/material.dart';
 import '../data/finance_data.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common.dart';
+import 'bills_screen.dart';
 import 'login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   final VoidCallback onOpenSettings;
-  const ProfileScreen({super.key, required this.onOpenSettings});
+  final VoidCallback? onOpenBills;
+  const ProfileScreen({
+    super.key,
+    required this.onOpenSettings,
+    this.onOpenBills,
+  });
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -42,6 +48,17 @@ class ProfileScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
         child: Column(
           children: [
+            MenuTile(
+              icon: Icons.event_repeat_rounded,
+              title: 'Pagos fijos',
+              onTap:
+                  onOpenBills ??
+                  () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const BillsScreen(standalone: true),
+                    ),
+                  ),
+            ),
             MenuTile(
               icon: Icons.settings_outlined,
               title: 'Configuración',

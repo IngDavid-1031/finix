@@ -4,12 +4,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/supabase_config.dart';
 import 'data/finance_data.dart';
+import 'screens/bills_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/splash_screen.dart';
 import 'services/bank_detector.dart';
+import 'services/reminder_service.dart';
 import 'theme/app_colors.dart';
 
-/// Para desarrollo: --dart-define=START=home|stats|goals|profile abre esa
+/// Para desarrollo: --dart-define=START=home|stats|goals|profile|bills abre esa
 /// pestaña directamente con datos de ejemplo (sin iniciar sesión).
 const _start = String.fromEnvironment('START');
 
@@ -29,6 +31,7 @@ Future<void> main() async {
     AppState.loadDemoData();
   }
   BankDetector.init();
+  ReminderService.init();
   runApp(const FinixApp());
 }
 
@@ -60,6 +63,7 @@ class FinixApp extends StatelessWidget {
       'stats' => const HomeShell(initialTab: 1),
       'goals' => const HomeShell(initialTab: 2),
       'profile' => const HomeShell(initialTab: 3),
+      'bills' => const BillsScreen(standalone: true),
       _ => const SplashScreen(),
     },
   );

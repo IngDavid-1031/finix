@@ -85,7 +85,8 @@ class AuthService {
         'email not confirmed': 'Confirma tu correo antes de iniciar sesión',
         'already registered': 'Ese correo ya tiene una cuenta',
         'password should be': 'La contraseña debe tener al menos 6 caracteres',
-        'provider is not enabled': 'El inicio con Google aún no está activado en Supabase',
+        'provider is not enabled':
+            'El inicio con Google aún no está activado en Supabase',
         'valid email': 'Escribe un correo válido',
         'invalid format': 'Escribe un correo válido',
       };

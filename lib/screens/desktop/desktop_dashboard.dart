@@ -9,6 +9,7 @@ import '../../widgets/backgrounds.dart';
 import '../../widgets/charts.dart';
 import '../../widgets/common.dart';
 import '../add_movement_screen.dart';
+import '../bills_screen.dart';
 import '../goals_screen.dart';
 import '../home_screen.dart' show GreetingText;
 
@@ -105,7 +106,7 @@ class DesktopDashboard extends StatelessWidget {
                       flex: 4,
                       child: _CategoryDonutCard(
                         summary: s,
-                        onDetail: () => onNavigate(4),
+                        onDetail: () => onNavigate(5),
                       ),
                     ),
                     gap,
@@ -134,7 +135,7 @@ class DesktopDashboard extends StatelessWidget {
                     gap,
                     Expanded(
                       flex: 3,
-                      child: _QuickSettings(onEdit: () => onNavigate(6)),
+                      child: _BillsCard(onSeeAll: () => onNavigate(4)),
                     ),
                   ],
                 ),
@@ -951,90 +952,130 @@ class _MonthCard extends StatelessWidget {
   );
 }
 
-/* ───────────────────────── Configuración rápida ───────────────────────── */
+/* ───────────────────────── Próximos pagos ───────────────────────── */
 
-class _QuickSettings extends StatelessWidget {
-  final VoidCallback onEdit;
-  const _QuickSettings({required this.onEdit});
-
-  Widget _row(IconData icon, String label, Widget trailing) => Expanded(
-    child: Row(
-      children: [
-        Icon(icon, size: 21, color: AppColors.text),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.text, fontSize: 14),
-          ),
-        ),
-        trailing,
-      ],
-    ),
-  );
-
-  Widget _switch(ValueNotifier<bool> n) =>
-      SizedBox(height: 30, child: FittedBox(child: NotifierSwitch(n)));
+class _BillsCard extends StatelessWidget {
+  final VoidCallback onSeeAll;
+  const _BillsCard({required this.onSeeAll});
 
   @override
   Widget build(BuildContext context) => SoftCard(
-    padding: const EdgeInsets.fromLTRB(18, 16, 14, 10),
-    child: Column(
-      children: [
-        Row(
+    padding: const EdgeInsets.fromLTRB(18, 16, 16, 12),
+    child: ValueListenableBuilder<List<Bill>>(
+      valueListenable: AppState.bills,
+      builder: (context, bills, _) {
+        final pending = bills.where((b) => !b.paidThisMonth).toList()
+          ..sort((a, b) => a.daysLeft.compareTo(b.daysLeft));
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(
-              Icons.settings_outlined,
-              size: 22,
-              color: AppColors.text,
-            ),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'Configuración Rápida',
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: AppColors.text,
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Próximos pagos',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: AppColors.text,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            InkWell(
-              onTap: onEdit,
-              child: const Text(
-                'Editar',
-                style: TextStyle(
-                  color: AppColors.green,
-                  fontWeight: FontWeight.w600,
+                InkWell(
+                  onTap: bills.isEmpty
+                      ? () => showBillDialog(context)
+                      : onSeeAll,
+                  child: Text(
+                    bills.isEmpty ? 'Agregar' : 'Ver todos',
+                    style: const TextStyle(
+                      color: AppColors.green,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: bills.isEmpty
+                  ? const Center(
+                      child: Text(
+                        '🧾\nAgrega tu arriendo, planes o servicios y te avisamos antes de que se venzan.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.muted, height: 1.4),
+                      ),
+                    )
+                  : pending.isEmpty
+                  ? const Center(
+                      child: Text(
+                        '🎉\n¡Todo pagado este mes!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.text,
+                          fontWeight: FontWeight.w700,
+                          height: 1.5,
+                        ),
+                      ),
+                    )
+                  : ListView(
+                      padding: EdgeInsets.zero,
+                      children: [
+                        for (final b in pending.take(4))
+                          InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => showBillActions(context, b),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    b.emoji,
+                                    style: const TextStyle(fontSize: 22),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          b.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.text,
+                                          ),
+                                        ),
+                                        Text(
+                                          dueText(b),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: dueColor(b),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Text(
+                                    compactMoney(b.amount),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.text,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
             ),
           ],
-        ),
-        const SizedBox(height: 6),
-        _row(
-          Icons.dark_mode_outlined,
-          'Modo Oscuro',
-          _switch(AppState.darkMode),
-        ),
-        _row(
-          Icons.notifications_none_rounded,
-          'Notificaciones',
-          _switch(AppState.notifications),
-        ),
-        _row(
-          Icons.calendar_today_outlined,
-          'Recordatorios de gasto',
-          _switch(AppState.reminders),
-        ),
-        _row(
-          Icons.language_rounded,
-          'Idioma: Español',
-          const Icon(Icons.chevron_right_rounded, color: AppColors.text),
-        ),
-      ],
+        );
+      },
     ),
   );
 }

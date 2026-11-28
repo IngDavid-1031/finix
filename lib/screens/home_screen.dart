@@ -5,6 +5,7 @@ import '../data/summary.dart';
 import '../theme/app_colors.dart';
 import '../widgets/charts.dart';
 import '../widgets/common.dart';
+import 'bills_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final void Function(int filter) onOpenHistory;
@@ -118,6 +119,15 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 22),
+          UpcomingBillsCard(
+            max: 2,
+            onSeeAll: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const BillsScreen(standalone: true),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           SectionHeader(
             title: 'Últimos movimientos',
             action: 'Ver todo',
@@ -180,16 +190,46 @@ class BalanceCard extends StatefulWidget {
 
 class _BalanceCardState extends State<BalanceCard> {
   bool _hidden = false;
-  int _period = 0;
+  int _period = 1;
 
-  static const _periods = ['1M', '3M', '6M', '1A'];
-  static const _days = [30, 90, 180, 365];
+  /// Día que se ve en "Diario" (0 = hoy, 1 = ayer…).
+  int _dayOffset = 0;
+
+  static const _periods = ['Diario', '1M', '3M', '6M', '1A'];
+  static const _days = [1, 30, 90, 180, 365];
+
+  bool get _daily => _period == 0;
+
+  DateTime get _day {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day - _dayOffset);
+  }
+
+  /// Saldo al empezar el día y después de cada movimiento de ese día.
+  List<double> _daySeries(FinanceSummary s, List<Txn> dayTxns) {
+    var acc = s.balanceAt(_day.subtract(const Duration(microseconds: 1)));
+    final pts = [acc.toDouble()];
+    for (final t in dayTxns.reversed) {
+      acc += t.amount;
+      pts.add(acc.toDouble());
+    }
+    if (pts.length == 1) pts.add(pts.first);
+    return pts;
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = widget.summary;
     final change = s.balanceChange;
-    final series = s.balanceSeries(days: _days[_period]);
+    final day = _day;
+    final next = DateTime(day.year, day.month, day.day + 1);
+    final dayTxns = [
+      for (final t in s.txns)
+        if (!t.date.isBefore(day) && t.date.isBefore(next)) t,
+    ]..sort((a, b) => b.date.compareTo(a.date));
+    final series = _daily
+        ? _daySeries(s, dayTxns)
+        : s.balanceSeries(days: _days[_period]);
     return Container(
       decoration: BoxDecoration(
         gradient: AppColors.darkGradient,
@@ -315,10 +355,254 @@ class _BalanceCardState extends State<BalanceCard> {
               ],
             ),
           ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: _daily
+                ? _DayPanel(
+                    day: day,
+                    txns: dayTxns,
+                    hidden: _hidden,
+                    canGoForward: _dayOffset > 0,
+                    onPrev: () => setState(() => _dayOffset++),
+                    onNext: () => setState(() => _dayOffset--),
+                  )
+                : const SizedBox(width: double.infinity),
+          ),
         ],
       ),
     );
   }
+}
+
+/// "Diario": lo que entró y salió en un día, con flechas para ver otros días.
+class _DayPanel extends StatelessWidget {
+  final DateTime day;
+  final List<Txn> txns;
+  final bool hidden;
+  final bool canGoForward;
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+
+  const _DayPanel({
+    required this.day,
+    required this.txns,
+    required this.hidden,
+    required this.canGoForward,
+    required this.onPrev,
+    required this.onNext,
+  });
+
+  static const _max = 5;
+  static const _red = Color(0xFFFF8A8A);
+
+  String _money(int v, {bool sign = false}) =>
+      hidden ? '\$ •••' : formatMoney(v, withSign: sign);
+
+  @override
+  Widget build(BuildContext context) {
+    final income = txns
+        .where((t) => t.isIncome)
+        .fold(0, (a, t) => a + t.amount);
+    final expense = txns
+        .where((t) => !t.isIncome)
+        .fold(0, (a, t) => a - t.amount);
+    final white70 = Colors.white.withValues(alpha: 0.7);
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _ArrowButton(icon: Icons.chevron_left_rounded, onTap: onPrev),
+              Expanded(
+                child: Text(
+                  dateLabel(day),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              _ArrowButton(
+                icon: Icons.chevron_right_rounded,
+                onTap: canGoForward ? onNext : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _DayTotal(
+                  label: 'Ingresos',
+                  value: _money(income, sign: true),
+                  color: AppColors.mint,
+                  icon: Icons.arrow_upward_rounded,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _DayTotal(
+                  label: 'Gastos',
+                  value: _money(-expense),
+                  color: _red,
+                  icon: Icons.arrow_downward_rounded,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (txns.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                'Sin movimientos este día',
+                style: TextStyle(color: white70, fontSize: 13),
+              ),
+            )
+          else ...[
+            for (final t in txns.take(_max))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Icon(
+                        t.category.icon,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        t.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${t.date.hour.toString().padLeft(2, '0')}:'
+                      '${t.date.minute.toString().padLeft(2, '0')}',
+                      style: TextStyle(color: white70, fontSize: 11),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      _money(t.amount, sign: true),
+                      style: TextStyle(
+                        color: t.isIncome ? AppColors.mint : _red,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (txns.length > _max)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'y ${txns.length - _max} movimientos más',
+                  style: TextStyle(color: white70, fontSize: 12),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DayTotal extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+  const _DayTotal({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.18),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.8),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ArrowButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  const _ArrowButton({required this.icon, this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: onTap == null ? 0.05 : 0.14),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        icon,
+        size: 20,
+        color: Colors.white.withValues(alpha: onTap == null ? 0.3 : 1),
+      ),
+    ),
+  );
 }
 
 class _MiniStat extends StatelessWidget {

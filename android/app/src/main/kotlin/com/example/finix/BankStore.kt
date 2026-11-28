@@ -71,10 +71,19 @@ object BankStore {
             if (now - seen.getLong(it) > 3 * 86_400_000L) seen.remove(it)
         }
         val sign = if (r.income) "+" else "-"
-        val key = if (r.dateKey != null) "$sign${r.amount}@${r.dateKey}" else "$sign${r.amount}"
-        val window = if (r.dateKey != null) Long.MAX_VALUE else 5 * 60_000L
-        if (seen.has(key) && now - seen.getLong(key) < window) return false
-        seen.put(key, now)
+        val base = "$sign${r.amount}"
+        val window = 10 * 60_000L
+        fun recent(k: String) = seen.has(k) && now - seen.getLong(k) < window
+        // Una misma compra puede llegar por la Billetera de Google (sin fecha) y por el
+        // SMS del banco (con fecha): si el valor coincide en pocos minutos, es la misma.
+        val dup = if (r.dateKey != null) {
+            seen.has("$base@${r.dateKey}") || recent("u$base")
+        } else {
+            recent("a$base")
+        }
+        if (dup) return false
+        if (r.dateKey != null) seen.put("$base@${r.dateKey}", now) else seen.put("u$base", now)
+        seen.put("a$base", now)
         prefs(c).edit().putString(SEEN, seen.toString()).commit()
         return true
     }

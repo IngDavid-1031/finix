@@ -3,8 +3,11 @@ package com.example.finix
 import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.view.ContextThemeWrapper
 import android.view.Gravity
+import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
 
@@ -57,7 +60,25 @@ object BannerOverlay {
             wm.addView(view, lp)
             current = view
         } catch (_: Exception) {
-            // Sin permiso real: el movimiento se guarda luego con el nombre sugerido.
+            // Sin permiso real: avisamos con una notificación que abre el banner.
+            BankBridge.notifyFallback(app)
+            return
         }
+
+        // Algunos celulares (Xiaomi) aceptan la ventana pero no la muestran si Finix
+        // está en segundo plano. Si no se ve, la quitamos y avisamos con notificación.
+        val shown = view
+        main.postDelayed({
+            if (current !== shown || BankBridge.appVisible) return@postDelayed
+            val visible = shown.isAttachedToWindow && shown.windowVisibility == View.VISIBLE &&
+                shown.height > 0
+            if (!visible) {
+                try { wm.removeViewImmediate(shown) } catch (_: Exception) {}
+                current = null
+                BankBridge.notifyFallback(app)
+            }
+        }, 1500)
     }
+
+    private val main = Handler(Looper.getMainLooper())
 }

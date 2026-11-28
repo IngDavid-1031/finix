@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 
 import '../data/finance_data.dart';
 import 'database_service.dart';
+import 'reminder_service.dart';
 
 /// Estado de los permisos que necesita la detección automática.
 class BankStatus {
@@ -13,15 +14,27 @@ class BankStatus {
   final bool notifications;
   final bool sms;
   final bool overlay;
+
+  /// Xiaomi / Redmi / POCO: necesitan "ventanas emergentes en segundo plano".
+  final bool xiaomi;
+
+  /// null = no se pudo saber (se muestra como "Revisar").
+  final bool? popups;
   const BankStatus({
     this.enabled = false,
     this.notifications = false,
     this.sms = false,
     this.overlay = false,
+    this.xiaomi = false,
+    this.popups,
   });
 
   /// Lista para funcionar: puede leer el banco (notificación o SMS) y mostrar el banner.
-  bool get ready => enabled && (notifications || sms) && overlay;
+  bool get ready =>
+      enabled &&
+      (notifications || sms) &&
+      overlay &&
+      (!xiaomi || popups != false);
 }
 
 /// Puente con el código nativo de Android que lee los SMS/notificaciones del
@@ -46,6 +59,9 @@ class BankDetector {
   static void init() {
     if (!supported) return;
     _ch.setMethodCallHandler((call) async {
+      if (call.method == 'open') {
+        return ReminderService.handleOpen(call.arguments);
+      }
       if (call.method == 'changed') {
         changes.value++;
         await sync();
@@ -61,12 +77,14 @@ class BankDetector {
 
   static Future<BankStatus> status() async {
     if (!supported) return const BankStatus();
-    final m = await _ch.invokeMapMethod<String, bool>('status') ?? {};
+    final m = await _ch.invokeMapMethod<String, Object?>('status') ?? {};
     return BankStatus(
-      enabled: m['enabled'] ?? false,
-      notifications: m['notifications'] ?? false,
-      sms: m['sms'] ?? false,
-      overlay: m['overlay'] ?? false,
+      enabled: m['enabled'] == true,
+      notifications: m['notifications'] == true,
+      sms: m['sms'] == true,
+      overlay: m['overlay'] == true,
+      xiaomi: m['xiaomi'] == true,
+      popups: m['popups'] as bool?,
     );
   }
 
@@ -74,6 +92,8 @@ class BankDetector {
   static Future<void> openNotificationAccess() =>
       _ch.invokeMethod('openNotificationAccess');
   static Future<void> openOverlay() => _ch.invokeMethod('openOverlay');
+  static Future<void> openMiuiPermissions() =>
+      _ch.invokeMethod('openMiuiPermissions');
   static Future<void> openAppSettings() => _ch.invokeMethod('openAppSettings');
   static Future<void> requestPermissions() =>
       _ch.invokeMethod('requestPermissions');

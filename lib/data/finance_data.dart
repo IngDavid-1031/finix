@@ -113,6 +113,15 @@ class Txn {
     note: m['note'] as String?,
   );
 
+  Txn withId(String id) => Txn(
+    id: id,
+    title: title,
+    category: category,
+    amount: amount,
+    date: date,
+    note: note,
+  );
+
   Map<String, dynamic> toInsert() => {
     'title': title,
     'category': category.name,
@@ -120,6 +129,9 @@ class Txn {
     'date': date.toUtc().toIso8601String(),
     'note': note,
   };
+
+  /// Fila completa (con id) para la base interna y Supabase.
+  Map<String, dynamic> toRow() => {'id': id, ...toInsert()};
 }
 
 class Goal {
@@ -141,8 +153,8 @@ class Goal {
   double get progress =>
       target == 0 ? 0 : (saved / target).clamp(0, 1).toDouble();
 
-  Goal copyWith({int? saved}) => Goal(
-    id: id,
+  Goal copyWith({String? id, int? saved}) => Goal(
+    id: id ?? this.id,
     title: title,
     saved: saved ?? this.saved,
     target: target,
@@ -163,6 +175,110 @@ class Goal {
     'target': target,
     'emoji': emoji,
   };
+
+  Map<String, dynamic> toRow() => {'id': id, ...toInsert()};
+}
+
+/// Pago fijo mensual (arriendo, plan de celular, internet…).
+class Bill {
+  final String? id;
+  final String title;
+  final int amount; // positivo
+  final int dueDay; // 1..31 (si el mes tiene menos días, vence el último)
+  final String emoji;
+  final Category category;
+  final int remindDays; // avisar N días antes
+  final String? paidMonth; // 'YYYY-MM' del último mes pagado
+
+  const Bill({
+    this.id,
+    required this.title,
+    required this.amount,
+    required this.dueDay,
+    this.emoji = '🧾',
+    this.category = Categories.servicios,
+    this.remindDays = 3,
+    this.paidMonth,
+  });
+
+  static String monthKey(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}';
+
+  static DateTime _today() {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day);
+  }
+
+  DateTime _dueIn(int year, int month) {
+    final last = DateTime(year, month + 1, 0).day;
+    return DateTime(year, month, dueDay > last ? last : dueDay);
+  }
+
+  /// true si ya se pagó el mes actual.
+  bool get paidThisMonth =>
+      paidMonth != null && paidMonth!.compareTo(monthKey(_today())) >= 0;
+
+  /// Próxima fecha a pagar: la de este mes si no se ha pagado (aunque ya
+  /// haya pasado = vencido); si no, la del primer mes sin pagar.
+  DateTime get nextDue {
+    final t = _today();
+    for (var i = 0; i < 24; i++) {
+      final m = DateTime(t.year, t.month + i);
+      if (paidMonth == null || monthKey(m).compareTo(paidMonth!) > 0) {
+        return _dueIn(m.year, m.month);
+      }
+    }
+    return _dueIn(t.year, t.month + 1);
+  }
+
+  /// Días que faltan para el vencimiento (negativo = vencido).
+  int get daysLeft => nextDue.difference(_today()).inDays;
+
+  bool get overdue => !paidThisMonth && daysLeft < 0;
+  bool get dueSoon => !paidThisMonth && daysLeft <= remindDays;
+
+  Bill copyWith({
+    String? id,
+    String? title,
+    int? amount,
+    int? dueDay,
+    String? emoji,
+    Category? category,
+    int? remindDays,
+    String? paidMonth,
+  }) => Bill(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    amount: amount ?? this.amount,
+    dueDay: dueDay ?? this.dueDay,
+    emoji: emoji ?? this.emoji,
+    category: category ?? this.category,
+    remindDays: remindDays ?? this.remindDays,
+    paidMonth: paidMonth ?? this.paidMonth,
+  );
+
+  factory Bill.fromMap(Map<String, dynamic> m) => Bill(
+    id: m['id'] as String?,
+    title: m['title'] as String? ?? '',
+    amount: (m['amount'] as num?)?.toInt() ?? 0,
+    dueDay: (m['due_day'] as num?)?.toInt() ?? 1,
+    emoji: m['emoji'] as String? ?? '🧾',
+    category: Categories.byName(m['category'] as String?),
+    remindDays: (m['remind_days'] as num?)?.toInt() ?? 3,
+    paidMonth: m['paid_month'] as String?,
+  );
+
+  Map<String, dynamic> toInsert() => {
+    'title': title,
+    'amount': amount,
+    'due_day': dueDay,
+    'emoji': emoji,
+    'category': category.name,
+    'remind_days': remindDays,
+    'paid_month': paidMonth,
+  };
+
+  Map<String, dynamic> toRow() => {'id': id, ...toInsert()};
 }
 
 class AppUser {
@@ -202,6 +318,7 @@ class AppState {
   static final user = ValueNotifier<AppUser?>(null);
   static final transactions = ValueNotifier<List<Txn>>([]);
   static final goals = ValueNotifier<List<Goal>>([]);
+  static final bills = ValueNotifier<List<Bill>>([]);
 
   static final notifications = ValueNotifier<bool>(true);
   static final reminders = ValueNotifier<bool>(true);
@@ -277,6 +394,32 @@ class AppState {
         category: Categories.compras,
         amount: -1500000,
         date: ago(70),
+      ),
+    ];
+    final now = DateTime.now();
+    final lastMonth = Bill.monthKey(DateTime(now.year, now.month - 1));
+    bills.value = [
+      Bill(
+        title: 'Arriendo',
+        amount: 900000,
+        dueDay: now.day + 3 > 28 ? 28 : now.day + 3,
+        emoji: '🏠',
+        category: Categories.hogar,
+        paidMonth: lastMonth,
+      ),
+      Bill(
+        title: 'Plan celular',
+        amount: 55000,
+        dueDay: now.day,
+        emoji: '📱',
+        paidMonth: lastMonth,
+      ),
+      Bill(
+        title: 'Netflix',
+        amount: 26900,
+        dueDay: 5,
+        emoji: '🎬',
+        paidMonth: Bill.monthKey(now),
       ),
     ];
     goals.value = const [

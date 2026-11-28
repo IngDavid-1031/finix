@@ -95,6 +95,40 @@ object BankParser {
         return Result(amount, income, hint(text, p, income, bank), bank, date, dateKey)
     }
 
+    /** Apps de pago con el celular (no dicen el banco ni "compraste"). */
+    val walletApps = mapOf(
+        "com.google.android.apps.walletnfcrel" to "Billetera de Google",
+        "com.samsung.android.spay" to "Samsung Wallet",
+        "com.samsung.android.samsungpay.gear" to "Samsung Wallet",
+    )
+
+    /**
+     * Notificación de la Billetera de Google:
+     *   título "DISTRACOM MARRUECOS" · texto "COP 16,130.00 con Debito Mastercard Virtual ••2280"
+     */
+    fun parseWallet(title: String, body: String, appName: String): Result? {
+        val all = "$title\n$body"
+        val p = plain(all)
+        if (ignore.any { p.contains(it) } || p.contains("declined") || p.contains("no se completo")) return null
+        val inTitle = amountRe.find(title)
+        val m = amountRe.find(body) ?: inTitle ?: return null
+        val amount = toPesos(m.groupValues[1]) ?: return null
+        if (amount <= 0) return null
+        val income = listOf("reembolso", "devolucion", "refund", "recibiste").any { p.contains(it) }
+        // El comercio es la línea que no tiene el valor.
+        val merchant = (if (inTitle == null) title else body)
+            .replace(amountRe, "").trim().trim(':', '-', '·').trim()
+            .takeIf { it.length in 2..60 && !plain(it).startsWith("con ") }
+            ?.let(::nice)
+        val hint = when {
+            income && merchant != null -> "Reembolso de $merchant"
+            income -> "Reembolso"
+            merchant != null -> "Compra en $merchant"
+            else -> "Compra con tarjeta"
+        }
+        return Result(amount, income, hint, appName, System.currentTimeMillis(), null)
+    }
+
     /** "$1.160.000,00" → 1160000 · "$23,000.00" → 23000 · "$ 26,380" → 26380 */
     fun toPesos(raw: String): Long? {
         val last = maxOf(raw.lastIndexOf('.'), raw.lastIndexOf(','))

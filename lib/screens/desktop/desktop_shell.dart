@@ -4,6 +4,8 @@ import '../../data/finance_data.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/backgrounds.dart';
 import '../../widgets/common.dart';
+import '../../services/reminder_service.dart';
+import '../bills_screen.dart';
 import '../categories_screen.dart';
 import '../goals_screen.dart';
 import '../history_screen.dart';
@@ -28,6 +30,7 @@ class _DesktopShellState extends State<DesktopShell> {
     (Icons.bar_chart_rounded, 'Estadísticas'),
     (Icons.swap_vert_rounded, 'Movimientos'),
     (Icons.favorite_border_rounded, 'Mis metas'),
+    (Icons.event_repeat_rounded, 'Pagos fijos'),
     (Icons.calendar_today_outlined, 'Categorías'),
     (Icons.person_outline_rounded, 'Perfil'),
     (Icons.settings_outlined, 'Configuración'),
@@ -36,15 +39,39 @@ class _DesktopShellState extends State<DesktopShell> {
 
   void _go(int i) => setState(() => _index = i);
 
+  @override
+  void initState() {
+    super.initState();
+    ReminderService.openBills.addListener(_openBills);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openBills());
+  }
+
+  @override
+  void dispose() {
+    ReminderService.openBills.removeListener(_openBills);
+    super.dispose();
+  }
+
+  /// Al tocar la notificación de un pago, abre "Pagos fijos".
+  void _openBills() {
+    if (!mounted || !ReminderService.openBills.value) return;
+    ReminderService.openBills.value = false;
+    _go(4);
+  }
+
   Widget _content() {
     if (_index == 0) return DesktopDashboard(onNavigate: _go);
     final page = switch (_index) {
-      1 => StatsScreen(onSeeCategories: () => _go(4)),
+      1 => StatsScreen(onSeeCategories: () => _go(5)),
       2 => const HistoryScreen(),
       3 => const GoalsScreen(),
-      4 => const CategoriesScreen(),
-      5 => ProfileScreen(onOpenSettings: () => _go(6)),
-      6 => const SettingsScreen(),
+      4 => const BillsScreen(),
+      5 => const CategoriesScreen(),
+      6 => ProfileScreen(
+        onOpenSettings: () => _go(7),
+        onOpenBills: () => _go(4),
+      ),
+      7 => const SettingsScreen(),
       _ => const HelpScreen(),
     };
     return Align(
@@ -65,7 +92,7 @@ class _DesktopShellState extends State<DesktopShell> {
         Expanded(
           child: Column(
             children: [
-              _TopBar(onProfile: () => _go(5)),
+              _TopBar(onProfile: () => _go(6)),
               Expanded(
                 child: KeyedSubtree(key: ValueKey(_index), child: _content()),
               ),
